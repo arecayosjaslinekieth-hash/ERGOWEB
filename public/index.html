@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🪑 ErgoCheck - Free Ergonomics Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1 { 
+      text-align: center; 
+      color: white; 
+      font-size: 2.5em; 
+      margin-bottom: 20px;
+      text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .progress {
+      background: #e0e0e0;
+      height: 10px;
+      border-radius: 5px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3498db, #e74c3c);
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .question {
+      margin: 25px 0;
+    }
+    .question h3 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .options {
+      display: grid;
+      gap: 10px;
+    }
+    .option {
+      padding: 15px;
+      border: 2px solid #e1e8ed;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: #f8f9fa;
+    }
+    .option:hover, .option.selected {
+      border-color: #3498db;
+      background: #e3f2fd;
+    }
+    .btn {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 50px;
+      font-size: 18px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 20px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(52,152,219,0.4); }
+    .results {
+      text-align: center;
+    }
+    .score {
+      font-size: 4em;
+      font-weight: bold;
+      margin: 20px 0;
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tips {
+      display: grid;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    .tip {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 5px solid #3498db;
+    }
+    .tip.high { border-left-color: #e74c3c; background: #fff5f5; }
+    @media (max-width: 600px) {
+      h1 { font-size: 2em; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🪑 ErgoCheck</h1>
+    
+    <div id="quiz" class="card">
+      <div class="progress">
+        <div class="progress-fill" id="progress"></div>
+      </div>
+      <div id="questions"></div>
+      <button class="btn" onclick="submitQuiz()">🧠 Get My ErgoScore!</button>
+    </div>
+
+    <div id="results" class="card" style="display:none;">
+      <div class="results">
+        <h2>Your Results</h2>
+        <div class="score" id="score">0</div>
+        <div id="category"></div>
+        <div id="description"></div>
+        <div class="tips" id="tips"></div>
+        <button class="btn" onclick="restart()">🔄 New Assessment</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        q: "How high is your monitor top edge relative to your eyes?",
+        options: ["Above eye level 😞", "At eye level 😊", "Below eye level 😞"],
+        scores: [0, 25, 0]
+      },
+      {
+        q: "Distance from eyes to monitor?",
+        options: ["<20 inches 😞", "20-30 inches 😊", "30+ inches 🤏"],
+        scores: [0, 25, 10]
+      },
+      {
+        q: "Do your feet rest flat on floor/footrest?",
+        options: ["No, they dangle 😞", "Yes, flat 😊", "Knees above hips 🤏"],
+        scores: [0, 20, 5]
+      },
+      {
+        q: "Are your elbows at ~90° when typing?",
+        options: ["No, wrong angle 😞", "Yes, 90° perfect 😊", "Arms extended 🤏"],
+        scores: [5, 20, 0]
+      },
+      {
+        q: "Are your shoulders relaxed (not shrugged)?",
+        options: ["No, shrugged up 😞", "Yes, relaxed 😊", "One higher 🤏"],
+        scores: [0, 20, 5]
+      },
+      {
+        q: "Are your wrists straight when typing?",
+        options: ["Bent up/down 😞", "Straight/neutral 😊", "Extended 🤏"],
+        scores: [0, 15, 0]
+      },
+      {
+        q: "How's your room lighting?",
+        options: ["Glare/too bright 😞", "Perfect balance 😊", "Too dark 🤏"],
+        scores: [5, 15, 10]
+      },
+      {
+        q: "Do you take breaks every 1-2 hours?",
+        options: ["Rarely 😞", "Sometimes 🤏", "Regularly 😊"],
+        scores: [0, 10, 20]
+      }
+    ];
+
+    let currentAnswers = new Array(questions.length).fill(0);
+
+    function init() {
+      renderQuestions();
+      updateProgress();
+    }
+
+    function renderQuestions() {
+      const container = document.getElementById('questions');
+      container.innerHTML = questions.map((q, i) => `
+        <div class="question">
+          <h3>${i+1}. ${q.q}</h3>
+          <div class="options">
+            ${q.options.map((opt, j) => 
+              `<div class="option ${currentAnswers[i] === j ? 'selected' : ''}" 
+                   onclick="selectAnswer(${i}, ${j})">${opt}</div>`
+            ).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectAnswer(qIndex, optionIndex) {
+      currentAnswers[qIndex] = optionIndex;
+      renderQuestions();
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const answered = currentAnswers.filter(a => a >= 0).length;
+      const progress = (answered / questions.length) * 100;
+      document.getElementById('progress').style.width = progress + '%';
+    }
+
+    async function submitQuiz() {
+      const response = await fetch('/api/assess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: currentAnswers })
+      });
+      const result = await response.json();
+      showResults(result);
+    }
+
+    function showResults(result) {
+      document.getElementById('quiz').style.display = 'none';
+      document.getElementById('results').style.display = 'block';
+      
+      document.getElementById('score').textContent = result.score;
+      document.getElementById('category').textContent = result.category;
+      document.getElementById('description').textContent = result.description;
+      
+      document.getElementById('tips').innerHTML = result.tips.map(tip => 
+        `<div class="tip ${tip.priority.toLowerCase()}">
+          <strong>${tip.priority === 'HIGH' ? '🔴 URGENT' : '🟡 TIP'}</strong><br>
+          ${tip.text}
+        </div>`
+      ).join('');
+    }
+
+    function restart() {
+      document.getElementById('quiz').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+      currentAnswers.fill(0);
+      init();
+    }
+
+    init();
+  </script>
+</body>
+</html>
